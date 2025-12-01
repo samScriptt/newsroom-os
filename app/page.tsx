@@ -18,20 +18,36 @@ export default function Home() {
     setLogs((prev) => [...prev, `[${timestamp}] ${message}`]);
   };
 
-  const startProcess = () => {
+  const startProcess = async () => {
     setIsRunning(true);
     setLogs([]);
     addLog("System initialized.");
-    addLog("Connecting to Curation Agent...");
     
-    // Simula atraso da rede/IA
-    setTimeout(() => addLog("Fetching top headlines from NewsAPI..."), 1000);
-    setTimeout(() => addLog("Found 5 relevant articles about 'AI'."), 2500);
-    setTimeout(() => addLog("Sending data to Writer Agent (LLM)..."), 4000);
-    setTimeout(() => {
-        addLog("Drafting content completed.");
-        setIsRunning(false);
-    }, 6000);
+    try {
+      addLog("Contacting API Routes...");
+      
+      const res = await fetch("/api/agents", { method: "POST" });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error);
+
+      // Adiciona os logs que vieram do servidor
+      data.logs.forEach((log: string) => addLog(log));
+
+      // Atualiza o preview com o HTML gerado pelo Gemini
+      // Atenção: Em React real, usaríamos dangerouslySetInnerHTML com cuidado.
+      // Como é um projeto de demo/hackathon, tudo bem.
+      const previewDiv = document.getElementById("newsletter-preview");
+      if (previewDiv) {
+        previewDiv.innerHTML = data.content;
+      }
+
+    } catch (error) {
+      addLog("ERROR: Failed to generate newsletter.");
+      console.error(error);
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   return (
@@ -88,15 +104,9 @@ export default function Home() {
                 </CardTitle>
             </CardHeader>
             <CardContent className="h-full bg-white text-black p-8 rounded-md m-4 max-h-[75vh] overflow-y-auto">
-                {/* Aqui vai entrar o HTML do email gerado */}
-                <h1 className="text-3xl font-bold mb-4">Tech Morning Digest</h1>
-                <p className="text-gray-500 italic mb-6">Curated by AI Agents • {new Date().toLocaleDateString()}</p>
-                
-                <div className="space-y-6">
-                    <div className="p-4 bg-gray-100 rounded">
-                        <h2 className="font-bold text-xl">Aguardando geração...</h2>
-                        <p className="text-gray-600 mt-2">Clique em "START AGENTS" para iniciar o processo de curadoria e escrita.</p>
-                    </div>
+                <div id="newsletter-preview">
+                    {/* O conteúdo inicial pode ficar aqui ou ser vazio */}
+                    <h1 className="text-3xl font-bold mb-4 opacity-50">Waiting for generation...</h1>
                 </div>
             </CardContent>
         </Card>
